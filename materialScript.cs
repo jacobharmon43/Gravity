@@ -47,7 +47,7 @@ public class materialScript : MonoBehaviour
         {
             if (playerScript.IsPulling())
             {
-                playerScript.DropObject();
+                playerScript.DropObject(-collision.relativeVelocity);
             }
         }
     }

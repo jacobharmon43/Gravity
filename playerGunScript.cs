@@ -5,7 +5,7 @@ public class playerGunScript : MonoBehaviour
     //For the UI
     public Canvas canvas;
     private Camera cam;
-    
+
     //Publicly set variables
     public float range = Mathf.Infinity;
     public float pullingSpeed = 5.0f;
@@ -41,14 +41,14 @@ public class playerGunScript : MonoBehaviour
         }
     }
 
-    public void DropObject()
+    public void DropObject(Vector3 force)
     {
-        SetPulledObjectForces(Vector3.zero);
+        SetPulledObjectForces(force);
     }
 
     public bool IsPulling()
     {
-        if(pulledObject != null)
+        if (pulledObject != null)
         {
             return true;
         }
@@ -163,7 +163,7 @@ public class playerGunScript : MonoBehaviour
                 obj.GetComponent<materialScript>().ChangeGravityScale(0f);
                 break;
             case 2:
-                obj.GetComponent<materialScript>().ChangeGravityScale(-0.25f);
+                obj.GetComponent<materialScript>().ChangeGravityScale(-0.1f);
                 break;
             default:
                 break;

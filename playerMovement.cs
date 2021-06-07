@@ -3,6 +3,9 @@ using UnityEngine.SceneManagement;
 
 public class playerMovement : MonoBehaviour
 {
+    //Camera
+    private Camera cam;
+
     //Movement and jumping variables
     public float gravityScale = 1.0f;
     public float playerSpeed = 10.0f;
@@ -14,13 +17,6 @@ public class playerMovement : MonoBehaviour
     private float jumpTimerCounterMax = 1f;
     private readonly float gravityValue = -9.81f;
     private Rigidbody rb;
-
-    //Camera control variables
-    private readonly float camRotateX = 10.0f;
-    private readonly float camRotateY = 10.0f;
-    private Vector3 rotation = new Vector3(0, 0, 0);
-    private Camera cam;
-    
 
     private void Start()
     {
@@ -34,10 +30,9 @@ public class playerMovement : MonoBehaviour
     private void Update()
     {
         CheckIfGrounded();
-        HandleCamera();
         HandleMovement();
         RotatePlayerToCamera();
-        RestartSceneOnR();  
+        RestartSceneOnR();
     }
 
     private void RestartSceneOnR()
@@ -80,9 +75,9 @@ public class playerMovement : MonoBehaviour
             float jumpForce = Mathf.Sqrt(highJump * gravityScale * -0.75f * gravityValue);
             rb.AddForce(new Vector3(0, jumpForce, 0), ForceMode.Impulse);
         }
-        if(Input.GetButton("Jump") && isJumping)
+        if (Input.GetButton("Jump") && isJumping)
         {
-            if(jumpTimerCounter > 0)
+            if (jumpTimerCounter > 0)
             {
                 float thrustForce = Mathf.Sqrt(airThrusters * gravityScale * gravityValue * -1f);
                 rb.AddForce(new Vector3(0, thrustForce, 0), ForceMode.Force);
@@ -94,20 +89,10 @@ public class playerMovement : MonoBehaviour
                 jumpTimerCounter = 0;
             }
         }
-        if(Input.GetButtonUp("Jump") && isJumping)
+        if (Input.GetButtonUp("Jump") && isJumping)
         {
             isJumping = false;
         }
-    }
-
-    private void HandleCamera()
-    {
-        float mouseX = Input.GetAxis("Mouse X") * camRotateX;
-        float mouseY = Input.GetAxis("Mouse Y") * camRotateY;
-        rotation.y += mouseX;
-        rotation.x -= mouseY;
-        rotation.x = Mathf.Clamp(rotation.x, -90, 90);
-        cam.transform.eulerAngles = rotation;
     }
 
     private void CheckIfGrounded()
