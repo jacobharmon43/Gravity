@@ -9,17 +9,18 @@ public class UI_Manager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-
+        
     }
 
     // Update is called once per frame
     void Update()
     {
-
+        
     }
 
+    //Who really knows what this does
     public void UpdateGravityModeText(string S)
     {
-        gravityModeText.text = "Gravity Mode: " + S;
+        this.gravityModeText.text = "Gravity Mode: " + S;
     }
 }
