@@ -2,10 +2,20 @@ using UnityEngine;
 
 public class playerGunScript : MonoBehaviour
 {
+    /* This class handles the following
+     * All player mouse inputs.
+     * All shooting related raycasts
+     * All object moving related to the gun 
+     ***** MIGHT MOVE THE OBJECT MOVING TO THE MATERIAL SCRIPT *****
+     */
+
+
     //For the UI
     public Canvas canvas;
-    private Camera cam;
 
+    //For reading the cameras angle
+    private Camera cam;
+    
     //Publicly set variables
     public float range = Mathf.Infinity;
     public float pullingSpeed = 5.0f;
@@ -15,50 +25,57 @@ public class playerGunScript : MonoBehaviour
     private GameObject pulledObject;
     private Vector3 oldPos;
     private int gravitySwapState = 0;
-    private float currentGravityScaleOfObject, waitTimer = 0f;
-    private bool pullingStarted = false;
+    private float currentGravityScaleOfObject;
+
+    //Timer
+    [SerializeField] private ActionOnTimer timer;
 
     //Constants
     private readonly float minDistanceToPlayer = 2f;
 
-    // Start is called before the first frame update
+    // Variable Init
     void Start()
     {
         cam = Camera.main;
     }
 
-    // Update is called once per frame
+    //Input Updates go here
     void Update()
     {
         HandleSwap();
         HandleShoot();
     }
+
+    //Physics updates go here
     private void FixedUpdate()
     {
-        if (pulledObject != null)
+        if (IsPulling())
         {
             PullToPlayer(pulledObject);
         }
     }
 
+    //Used externally in materialScript for release.
     public void DropObject(Vector3 force)
     {
         SetPulledObjectForces(force);
     }
 
+    //Used internally here, and externally to force the player to drop the object.
     public bool IsPulling()
     {
-        if (pulledObject != null)
-        {
-            return true;
-        }
-        return false;
+        return (pulledObject != null);
     }
 
-
+    //Before pulling is started
+        //Left click changes gravity state
+        //right click starts pulling
+    //After pulling is started
+        //Left click fires the object forwards
+        //Releasing right click drops the object where it is, and gives it a slight launch.
     private void HandleShoot()
     {
-        if (!pullingStarted)
+        if (!IsPulling())
         {
             if (Input.GetMouseButtonDown(0))
             {
@@ -73,35 +90,32 @@ public class playerGunScript : MonoBehaviour
             }
             else if (Input.GetMouseButtonDown(1))
             {
-                if (Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, range))
-                {
-                    if (hit.transform.CompareTag("Interactible"))
-                    {
-                        pulledObject = hit.transform.gameObject;
-                        SetPulledObjectInit();
-                    }
-                }
+                SetPulledObjectToRaycast();
             }
         }
         else
         {
             if (Input.GetMouseButtonUp(1))
             {
-                Vector3 direction = pulledObject.transform.position - oldPos;
-                Vector3 force = direction.normalized * direction.magnitude * flingSpeed * Time.deltaTime;
-                SetPulledObjectForces(force);
+                float newSpeed = Vector3.Distance(pulledObject.transform.position, oldPos) * flingSpeed;
+                SetPulledObjectForces(GetForceOfThrow(newSpeed));
             }
             else if (Input.GetMouseButtonDown(0))
             {
-                Vector3 direction = cam.transform.forward;
-                Vector3 force = direction.normalized * launchSpeed * Time.deltaTime;
-                SetPulledObjectForces(force);
+                
+                SetPulledObjectForces(GetForceOfThrow(launchSpeed));
             }
         }
     }
 
+    //Takes the passed in object
+    //Adjusts position towards player.
     private void PullToPlayer(GameObject obj)
     {
+        if(obj == null)
+        {
+            return;
+        }
         Rigidbody objRb = obj.GetComponent<Rigidbody>();
         Vector3 currentLocation = obj.transform.position;
         Vector3 targetLocation = cam.transform.position + (cam.transform.forward * minDistanceToPlayer);
@@ -113,18 +127,12 @@ public class playerGunScript : MonoBehaviour
         {
             SetLocation = targetLocation;
         }
-        if (waitTimer <= 0)
-        {
-            oldPos = SetLocation;
-            waitTimer += 0.5f;
-        }
-        else
-        {
-            waitTimer -= Time.deltaTime;
-        }
+        timer.SetTimer(1f, () => { oldPos = SetLocation; }); // Runs the function, after the timer expires. See ActionOnTimer.cs
         objRb.MovePosition(SetLocation);
     }
 
+    //Swaps weapon state, and canvas text. Might set this out to
+    //Somehow breaking the switch will set the text to none.
     private void HandleSwap()
     {
         if (Input.GetKeyDown(KeyCode.C))
@@ -134,45 +142,49 @@ public class playerGunScript : MonoBehaviour
             {
                 gravitySwapState = 0;
             }
+            string S = "None";
             switch (gravitySwapState)
             {
                 case 0:
-                    canvas.GetComponent<UI_Manager>().UpdateGravityModeText("Downwards Gravity");
+                    S = "Downwards";
                     break;
                 case 1:
-                    canvas.GetComponent<UI_Manager>().UpdateGravityModeText("No Gravity");
                     break;
                 case 2:
-                    canvas.GetComponent<UI_Manager>().UpdateGravityModeText("Upwards Gravity");
+                    S = "Upwards";
                     break;
                 default:
                     break;
             }
-
+            canvas.GetComponent<UI_Manager>().UpdateGravityModeText(S);
         }
     }
 
+    //Sets the passing in objects gravity based on the current gun state
+    //Somehow breaking the switch just sets gravity to none.
     private void SwapObjectGravity(Transform obj)
     {
+        float change = 0f;
         switch (gravitySwapState)
         {
             case 0:
-                obj.GetComponent<materialScript>().ChangeGravityScale(1f);
+                change = 1f;
                 break;
             case 1:
-                obj.GetComponent<materialScript>().ChangeGravityScale(0f);
                 break;
             case 2:
-                obj.GetComponent<materialScript>().ChangeGravityScale(-0.1f);
+                change = -0.3f;
                 break;
             default:
                 break;
         }
+        obj.GetComponent<materialScript>().ChangeGravityScale(change);
     }
 
+
+    //Reused code compartmentalized
     private void SetPulledObjectInit()
     {
-        pullingStarted = true;
         Rigidbody tempRb = pulledObject.GetComponent<Rigidbody>();
         materialScript objScript = pulledObject.GetComponent<materialScript>();
         tempRb.velocity = Vector3.zero;
@@ -180,7 +192,7 @@ public class playerGunScript : MonoBehaviour
         tempRb.angularVelocity = Vector3.zero;
         currentGravityScaleOfObject = objScript.ReadGravityScale();
         objScript.ChangeGravityScale(0);
-        objScript.shouldMove = false;
+        objScript.SetShouldMove(false);
     }
 
     private void SetPulledObjectForces(Vector3 flingForce)
@@ -189,10 +201,28 @@ public class playerGunScript : MonoBehaviour
         materialScript objScript = pulledObject.GetComponent<materialScript>();
         tempRb.mass = 100;
         objScript.ChangeGravityScale(currentGravityScaleOfObject);
-        objScript.shouldMove = true;
+        objScript.SetShouldMove(true);
         tempRb.AddForce(flingForce, ForceMode.VelocityChange);
-        pullingStarted = false;
         pulledObject = null;
+    }
+
+    private void SetPulledObjectToRaycast()
+    {
+        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, range))
+        {
+            if (hit.transform.CompareTag("Interactible"))
+            {
+                pulledObject = hit.transform.gameObject;
+                SetPulledObjectInit();
+            }
+        }
+    }
+
+    private Vector3 GetForceOfThrow(float speed)
+    {
+        Vector3 direction = cam.transform.forward;
+        Vector3 force = direction.normalized * speed * Time.deltaTime;
+        return force;
     }
 
 }
